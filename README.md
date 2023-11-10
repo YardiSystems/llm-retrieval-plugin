@@ -86,6 +86,7 @@ sudo apt-get install python3.10 python3-pip python3-distutils
 docker-compose -f tools/docker-compose-milvus.yml up -d
 ```
 
+
 ## Start the plugin
 ```
 # F5 to run in debugger or ...
@@ -93,12 +94,22 @@ docker-compose -f tools/docker-compose-milvus.yml up -d
 poetry run start
 ```
 
-## Start the Voyager DB scraper tool to populate Milvus with tenant history
+
+## Add data to Vector DB
 ```
-# install mssql plugin
+### UPSERT TEXT
+python3 tools/database_utils.py upsert <id> <text>
+
+
+### UPSERT FILE CONTENTS OF DIRECTORY
+python3 tools/database_utils.py upsert_files <directory path>
+
+
+### RUN VOYAGER DB TENANT HISTORY SCRAPER SCRIPT
+# install mssql plugin (only need once)
 poetry install -E mssql
 
-# set db connection info
+# set voyager db connection info
 export vdb_server=<voyager db server>
 export vdb_database=<voyager db database name>
 export vdb_user=<voyager db login user name>
@@ -107,6 +118,13 @@ export vdb_password=<voyager db login user password>
 # run script
 python3 tools/scrape_tenant_history.py
 ```
+
+
+## Search data in Vector DB
+```
+python3 tools/database_utils.py query_db [top_k]
+```
+
 
 ## Start the chat tool
 ```

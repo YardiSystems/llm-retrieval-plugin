@@ -1,13 +1,15 @@
-from typing import Any, Dict
-import requests
 import os
+import readline
+import requests
 import sys
 from env_vars import BEARER_TOKEN
+from typing import Any, Dict
+
 
 SEARCH_TOP_K = 3
 
 
-def upsert_file(directory: str):
+def upsert_files(directory: str):
     """
     Upload all files under a directory to the vector database.
     """
@@ -81,12 +83,12 @@ def query_database(query_prompt: str) -> Dict[str, Any]:
 
 if __name__ == "__main__":
     if len(sys.argv) > 2:
-        if sys.argv[1] == "upsert_file":
+        if sys.argv[1] == "upsert_files":
             if len(sys.argv) == 2:
-                upsert_file(sys.argv[1])
+                upsert_files(sys.argv[1])
                 exit(0)
             else:
-                print("Usage: upsert_file <filepathname>")
+                print("Usage: upsert_files <directory path>")
                 exit(0)
         elif sys.argv[1] == "upsert":
             if len(sys.argv) == 4:
@@ -95,6 +97,12 @@ if __name__ == "__main__":
             else:
                 print("Usage: upsert <id> <string>")
                 exit(0)
+        elif sys.argv[1] == "query_db":
+            if len(sys.argv) == 3:
+                if sys.argv[2].isdigit():
+                    SEARCH_TOP_K = int(sys.argv[2])
+            query = input("Enter text to search for: ")
+            print(query_database(query))
 
-    print("Usage: upsert_file <filepathname> | upsert <id> <string>")
+    print("Usage: upsert_files <directory path> | upsert <id> <string> | query_db [top_k]")
             
