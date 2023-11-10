@@ -1,0 +1,7 @@
+import os
+
+DATASTORE="milvus"
+BEARER_TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+OPENAI_API_KEY=os.environ.get("OPENAI_API_KEY") or "<YOU SHOULD SET ME IN .vscode/launch.json INSTEAD!!>"
+EMBEDDING_MODEL="all-MiniLM-L6-v2"
+MILVUS_COLLECTION="test_sbert"

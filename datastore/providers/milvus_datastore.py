@@ -1,6 +1,8 @@
 import json
 import os
 import asyncio
+import time
+import numpy
 
 from loguru import logger
 from typing import Dict, List, Optional
@@ -40,7 +42,8 @@ MILVUS_SEARCH_PARAMS = os.environ.get("MILVUS_SEARCH_PARAMS")
 MILVUS_CONSISTENCY_LEVEL = os.environ.get("MILVUS_CONSISTENCY_LEVEL")
 
 UPSERT_BATCH_SIZE = 100
-OUTPUT_DIM = 1536
+#OUTPUT_DIM = 1536
+OUTPUT_DIM = 384
 EMBEDDING_FIELD = "embedding"
 
 
@@ -345,6 +348,8 @@ class MilvusDataStore(DataStore):
         # Convert date to int timestamp form
         if values["created_at"]:
             values["created_at"] = to_unix_timestamp(values["created_at"])
+        else:
+            values["created_at"] = numpy.int64(time.time())
 
         # If source exists, change from Source object to the string value it holds
         if values["source"]:

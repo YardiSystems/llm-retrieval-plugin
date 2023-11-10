@@ -11,7 +11,7 @@ from models.models import (
     QueryWithEmbedding,
 )
 from services.chunks import get_document_chunks
-from services.openai import get_embeddings
+from services.embeddings import get_embeddings
 
 
 class DataStore(ABC):

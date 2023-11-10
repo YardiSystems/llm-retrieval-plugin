@@ -5,7 +5,7 @@ from models.models import Document, DocumentChunk, DocumentChunkMetadata
 
 import tiktoken
 
-from services.openai import get_embeddings
+from services.embeddings import get_embeddings
 
 # Global variables
 tokenizer = tiktoken.get_encoding(

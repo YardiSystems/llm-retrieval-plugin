@@ -13,7 +13,7 @@ class DocumentMetadata(BaseModel):
     source: Optional[Source] = None
     source_id: Optional[str] = None
     url: Optional[str] = None
-    created_at: Optional[str] = None
+    created_at: Optional[int] = None
     author: Optional[str] = None
 
 

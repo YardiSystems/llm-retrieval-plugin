@@ -16,8 +16,11 @@ from models.api import (
 )
 from datastore.factory import get_datastore
 from services.file import get_document_from_file
+from services.load_env_vars import load as load_env_vars
 
 from models.models import DocumentMetadata, Source
+
+load_env_vars()
 
 bearer_scheme = HTTPBearer()
 BEARER_TOKEN = os.environ.get("BEARER_TOKEN")
