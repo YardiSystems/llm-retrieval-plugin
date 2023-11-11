@@ -42,10 +42,11 @@ MILVUS_SEARCH_PARAMS = os.environ.get("MILVUS_SEARCH_PARAMS")
 MILVUS_CONSISTENCY_LEVEL = os.environ.get("MILVUS_CONSISTENCY_LEVEL")
 
 UPSERT_BATCH_SIZE = 100
-#OUTPUT_DIM = 1536
-OUTPUT_DIM = 384
 EMBEDDING_FIELD = "embedding"
 
+OUTPUT_DIM = 384
+if os.environ.get("EMBEDDING_MODEL", "").lower() == "text-embedding-ada-002":
+    OUTPUT_DIM = 1536
 
 class Required:
     pass
@@ -79,11 +80,7 @@ SCHEMA_V1 = [
     ),
     (
         "id",
-        FieldSchema(
-            name="id",
-            dtype=DataType.VARCHAR,
-            max_length=65535,
-        ),
+        FieldSchema(name="id",dtype=DataType.VARCHAR,max_length=65535),
         "",
     ),
     (
@@ -91,11 +88,22 @@ SCHEMA_V1 = [
         FieldSchema(name="source", dtype=DataType.VARCHAR, max_length=65535),
         "",
     ),
-    ("url", FieldSchema(name="url", dtype=DataType.VARCHAR, max_length=65535), ""),
-    ("created_at", FieldSchema(name="created_at", dtype=DataType.INT64), -1),
+    (   "url",
+        FieldSchema(name="url", dtype=DataType.VARCHAR, max_length=65535),
+         ""
+    ),
+    (   "created_at",
+        FieldSchema(name="created_at", dtype=DataType.INT64),
+         -1
+    ),
     (
         "author",
         FieldSchema(name="author", dtype=DataType.VARCHAR, max_length=65535),
+        "",
+    ),
+    (
+        "json_data",
+        FieldSchema(name="json_data", dtype=DataType.JSON),
         "",
     ),
 ]
@@ -140,7 +148,7 @@ class MilvusDataStore(DataStore):
                 if x[1] and ('address' in addr) and (addr['address'] == "{}:{}".format(MILVUS_HOST, MILVUS_PORT)):
                     self.alias = x[0]
                     logger.info("Reuse connection to Milvus server '{}:{}' with alias '{:s}'"
-                                     .format(MILVUS_HOST, MILVUS_PORT, self.alias))
+                                .format(MILVUS_HOST, MILVUS_PORT, self.alias))
                     break
 
             # Connect to the Milvus instance using the passed in Environment variables
@@ -155,10 +163,10 @@ class MilvusDataStore(DataStore):
                     secure=MILVUS_USE_SECURITY,
                 )
                 logger.info("Create connection to Milvus server '{}:{}' with alias '{:s}'"
-                                 .format(MILVUS_HOST, MILVUS_PORT, self.alias))
+                            .format(MILVUS_HOST, MILVUS_PORT, self.alias))
         except Exception as e:
             logger.error("Failed to create connection to Milvus server '{}:{}', error: {}"
-                            .format(MILVUS_HOST, MILVUS_PORT, e))
+                         .format(MILVUS_HOST, MILVUS_PORT, e))
 
     def _create_collection(self, collection_name, create_new: bool) -> None:
         """Create a collection based on environment and passed in variables.
@@ -186,7 +194,7 @@ class MilvusDataStore(DataStore):
                 )
                 self._schema_ver = "V2"
                 logger.info("Create Milvus collection '{}' with schema {} and consistency level {}"
-                                 .format(collection_name, self._schema_ver, self._consistency_level))
+                            .format(collection_name, self._schema_ver, self._consistency_level))
             else:
                 # If the collection exists, point to it
                 self.col = Collection(
@@ -198,9 +206,10 @@ class MilvusDataStore(DataStore):
                         self._schema_ver = "V2"
                         break
                 logger.info("Milvus collection '{}' already exists with schema {}"
-                                 .format(collection_name, self._schema_ver))
+                            .format(collection_name, self._schema_ver))
         except Exception as e:
-            logger.error("Failed to create collection '{}', error: {}".format(collection_name, e))
+            logger.error("Failed to create collection '{}', error: {}".format(
+                collection_name, e))
 
     def _create_index(self):
         # TODO: verify index/search params passed by os.environ
@@ -212,9 +221,11 @@ class MilvusDataStore(DataStore):
                 if self.index_params is not None:
                     # Convert the string format to JSON format parameters passed by MILVUS_INDEX_PARAMS
                     self.index_params = json.loads(self.index_params)
-                    logger.info("Create Milvus index: {}".format(self.index_params))
+                    logger.info("Create Milvus index: {}".format(
+                        self.index_params))
                     # Create an index on the 'embedding' field with the index params found in init
-                    self.col.create_index(EMBEDDING_FIELD, index_params=self.index_params)
+                    self.col.create_index(
+                        EMBEDDING_FIELD, index_params=self.index_params)
                 else:
                     # If no index param supplied, to first create an HNSW index for Milvus
                     try:
@@ -223,17 +234,24 @@ class MilvusDataStore(DataStore):
                             "index_type": "HNSW",
                             "params": {"M": 8, "efConstruction": 64},
                         }
-                        logger.info("Attempting creation of Milvus '{}' index".format(i_p["index_type"]))
-                        self.col.create_index(EMBEDDING_FIELD, index_params=i_p)
+                        logger.info("Attempting creation of Milvus '{}' index".format(
+                            i_p["index_type"]))
+                        self.col.create_index(
+                            EMBEDDING_FIELD, index_params=i_p)
                         self.index_params = i_p
-                        logger.info("Creation of Milvus '{}' index successful".format(i_p["index_type"]))
+                        logger.info("Creation of Milvus '{}' index successful".format(
+                            i_p["index_type"]))
                     # If create fails, most likely due to being Zilliz Cloud instance, try to create an AutoIndex
                     except MilvusException:
-                        logger.info("Attempting creation of Milvus default index")
-                        i_p = {"metric_type": "IP", "index_type": "AUTOINDEX", "params": {}}
-                        self.col.create_index(EMBEDDING_FIELD, index_params=i_p)
+                        logger.info(
+                            "Attempting creation of Milvus default index")
+                        i_p = {"metric_type": "IP",
+                               "index_type": "AUTOINDEX", "params": {}}
+                        self.col.create_index(
+                            EMBEDDING_FIELD, index_params=i_p)
                         self.index_params = i_p
-                        logger.info("Creation of Milvus default index successful")
+                        logger.info(
+                            "Creation of Milvus default index successful")
             # If an index already exists, grab its params
             else:
                 # How about if the first index is not vector index?
@@ -268,7 +286,8 @@ class MilvusDataStore(DataStore):
                 }
                 # Set the search params
                 self.search_params = default_search_params[self.index_params["index_type"]]
-            logger.info("Milvus search parameters: {}".format(self.search_params))
+            logger.info("Milvus search parameters: {}".format(
+                self.search_params))
         except Exception as e:
             logger.error("Failed to create index, error: {}".format(e))
 
@@ -306,7 +325,7 @@ class MilvusDataStore(DataStore):
                             insert_data[x].append(list_of_data[x])
             # Slice up our insert data into batches
             batches = [
-                insert_data[i : i + UPSERT_BATCH_SIZE]
+                insert_data[i: i + UPSERT_BATCH_SIZE]
                 for i in range(0, len(insert_data), UPSERT_BATCH_SIZE)
             ]
 
@@ -319,7 +338,8 @@ class MilvusDataStore(DataStore):
                         self.col.insert(batch)
                         logger.info(f"Upserted batch successfully")
                     except Exception as e:
-                        logger.error(f"Failed to insert batch records, error: {e}")
+                        logger.error(
+                            f"Failed to insert batch records, error: {e}")
                         raise e
 
             # This setting perfoms flushes after insert. Small insert == bad to use
@@ -329,8 +349,7 @@ class MilvusDataStore(DataStore):
             logger.error("Failed to insert records, error: {}".format(e))
             return []
 
-
-    def _get_values(self, chunk: DocumentChunk) -> List[any] | None:  # type: ignore
+    def _get_values(self, chunk: DocumentChunk) -> List[any] | None:
         """Convert the chunk into a list of values to insert whose indexes align with fields.
 
         Args:
@@ -363,7 +382,8 @@ class MilvusDataStore(DataStore):
             x = values.get(key) or default
             # If one of our required fields is missing, ignore the entire entry
             if x is Required:
-                logger.info("Chunk " + values["id"] + " missing " + key + " skipping")
+                logger.info(
+                    "Chunk " + values["id"] + " missing " + key + " skipping")
                 return None
             # Add the corresponding value if it passes the tests
             ret.append(x)
@@ -458,7 +478,8 @@ class MilvusDataStore(DataStore):
         # If deleting all, drop and create the new collection
         if delete_all:
             coll_name = self.col.name
-            logger.info("Delete the entire collection {} and create new one".format(coll_name))
+            logger.info(
+                "Delete the entire collection {} and create new one".format(coll_name))
             # Release the collection from memory
             self.col.release()
             # Drop the collection
@@ -488,12 +509,14 @@ class MilvusDataStore(DataStore):
                     pks = ['"' + pk + '"' for pk in pks]
 
                 # Delete by ids batch by batch(avoid too long expression)
-                logger.info("Apply {:d} deletions to schema {:s}".format(len(pks), self._schema_ver))
+                logger.info("Apply {:d} deletions to schema {:s}".format(
+                    len(pks), self._schema_ver))
                 while len(pks) > 0:
                     batch_pks = pks[:batch_size]
                     pks = pks[batch_size:]
                     # Delete the entries batch by batch
-                    res = self.col.delete(f"{pk_name} in [{','.join(batch_pks)}]")
+                    res = self.col.delete(
+                        f"{pk_name} in [{','.join(batch_pks)}]")
                     # Increment our deleted count
                     delete_count += int(res.delete_count)  # type: ignore
         except Exception as e:
@@ -509,7 +532,8 @@ class MilvusDataStore(DataStore):
                     # Query for the pk's of entries that match filter
                     res = self.col.query(filter)  # type: ignore
                     # Convert to list of pks
-                    pks = [str(entry[pk_name]) for entry in res]  # type: ignore
+                    pks = [str(entry[pk_name])
+                           for entry in res]  # type: ignore
                     # for schema V2, the "id" is varchar, rewrite the expression
                     if self._schema_ver != "V1":
                         pks = ['"' + pk + '"' for pk in pks]
@@ -518,7 +542,8 @@ class MilvusDataStore(DataStore):
                         batch_pks = pks[:batch_size]
                         pks = pks[batch_size:]
                         # Delete the entries batch by batch
-                        res = self.col.delete(f"{pk_name} in [{','.join(batch_pks)}]")  # type: ignore
+                        res = self.col.delete(
+                            f"{pk_name} in [{','.join(batch_pks)}]")  # type: ignore
                         # Increment our delete count
                         delete_count += int(res.delete_count)  # type: ignore
         except Exception as e:
@@ -545,8 +570,13 @@ class MilvusDataStore(DataStore):
         for field, value in filter.dict().items():
             # Check if the Value is empty
             if value is not None:
+                if field == "property_ids":
+                    if len(value) > 0:
+                        filters.append(
+                            "(json_contains_any(json_data['property_ids'], "+ str(value) + "))"
+                        )
                 # Convert start_date to int and add greater than or equal logic
-                if field == "start_date":
+                elif field == "start_date":
                     filters.append(
                         "(created_at >= " + str(to_unix_timestamp(value)) + ")"
                     )
@@ -557,7 +587,8 @@ class MilvusDataStore(DataStore):
                     )
                 # Convert Source to its string value and check equivalency
                 elif field == "source":
-                    filters.append("(" + field + ' == "' + str(value.value) + '")')
+                    filters.append(
+                        "(" + field + ' == "' + str(value.value) + '")')
                 # Check equivalency of rest of string fields
                 else:
                     filters.append("(" + field + ' == "' + str(value) + '")')

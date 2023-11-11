@@ -2,10 +2,11 @@ import os
 import pyodbc
 import requests
 import sys
-
+from typing import List
 from env_vars import BEARER_TOKEN
 
-def upsert(id: str, content: str):
+
+def upsert(id: str, text: str, property_ids: List[int]):
     """
     Upload one piece of text to the database.
     """
@@ -16,10 +17,17 @@ def upsert(id: str, content: str):
         "Authorization": "Bearer " + BEARER_TOKEN,
     }
 
+    metadata = {
+        "json_data": {
+            "property_ids" : property_ids
+        }
+    }
+
     data = {
         "documents": [{
             "id": id,
-            "text": content,
+            "text": text,
+            "metadata": metadata
         }]
     }
     response = requests.post(url, json=data, headers=headers, timeout=600)
@@ -34,13 +42,14 @@ if __name__ == "__main__":
 
     print("Connectiong to db...")
     conn = pyodbc.connect(
-        DRIVER='{ODBC Driver 18 for SQL Server}'
-        ,encrypt='no'
-        ,trust_server_certificate='yes'
-        ,server=os.environ.get("vdb_server") or ""
-        ,database=os.environ.get("vdb_database") or ""
-        ,uid=os.environ.get("vdb_user") or ""
-        ,pwd=os.environ.get("vdb_password") or "")
+        DRIVER='{ODBC Driver 18 for SQL Server}',
+        encrypt='no',
+        trust_server_certificate='yes',
+        server=os.environ.get("vdb_server") or "",
+        database=os.environ.get("vdb_database") or "",
+        uid=os.environ.get("vdb_user") or "",
+        pwd=os.environ.get("vdb_password") or ""
+    )
     cur = conn.cursor()
 
     query = """
@@ -61,11 +70,13 @@ if __name__ == "__main__":
         left outer join property p1 on p1.hmy = u1.HPROPERTY
         where t1.HMYPERSON = t.HMYPERSON AND NULLIF(th1.sevent,'') IS NOT NULL
         FOR XML PATH(''),TYPE).value('(./text())[1]','VARCHAR(MAX)')
-    ,1,1,'') AS story
+    ,1,1,'') AS story,
+    u.HPROPERTY AS property_ids
     FROM tenant t
     INNER JOIN tenant_history th on th.hTent = t.HMYPERSON
+    INNER JOIN unit u on u.hmy = th.hUnit
     WHERE NULLIF(t.sfirstname,'') IS NOT NULL AND NULLIF(t.slastname,'') IS NOT NULL AND NULLIF(th.sEvent,'') IS NOT NULL
-    group by t.HMYPERSON
+    group by t.HMYPERSON, u.HPROPERTY
     """
 
     print("Querying db...")
@@ -74,5 +85,4 @@ if __name__ == "__main__":
     for i in range(len(all_rows)):
         row = all_rows[i]
         print(f"{len(all_rows)}/{i} - {str(row[0])}")
-        upsert(str(row[0]), row[1])
-
+        upsert(str(row[0]), row[1], [int(p) for p in str(row[2]).split(',')])

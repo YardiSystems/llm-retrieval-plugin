@@ -15,7 +15,7 @@ def query_database(query_prompt: str) -> Dict[str, Any]:
         "accept": "application/json",
         "Authorization": f"Bearer {BEARER_TOKEN}",
     }
-    data = {"queries": [{"query": query_prompt, "top_k": 10}]}
+    data = {"queries": [{"query": query_prompt, "top_k": 10, "filter":{"property_ids":[]}}]}
 
     response = requests.post(url, json=data, headers=headers)
 
