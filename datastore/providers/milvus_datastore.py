@@ -31,7 +31,7 @@ from models.models import (
 )
 
 MILVUS_COLLECTION = os.environ.get("MILVUS_COLLECTION") or "c" + uuid4().hex
-MILVUS_HOST = os.environ.get("MILVUS_HOST") or "localhost"
+MILVUS_HOST = os.environ.get("MILVUS_HOST") or "127.0.0.1"
 MILVUS_PORT = os.environ.get("MILVUS_PORT") or 19530
 MILVUS_USER = os.environ.get("MILVUS_USER")
 MILVUS_PASSWORD = os.environ.get("MILVUS_PASSWORD")

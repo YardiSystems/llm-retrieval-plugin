@@ -30,5 +30,13 @@ class DeleteRequest(BaseModel):
     delete_all: Optional[bool] = False
 
 
+class EmbeddingRequest(BaseModel):
+    text: str
+
+
+class EmbeddingResponse(BaseModel):
+    embedding: List[float]
+
+
 class DeleteResponse(BaseModel):
     success: bool

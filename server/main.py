@@ -13,12 +13,15 @@ from models.api import (
     QueryResponse,
     UpsertRequest,
     UpsertResponse,
+    EmbeddingRequest,
+    EmbeddingResponse
 )
 from datastore.factory import get_datastore
 from services.file import get_document_from_file
 from services.load_env_vars import load as load_env_vars
+from services.embeddings import get_embeddings
 
-from models.models import DocumentMetadata, Source
+from models.models import DocumentMetadata, Source, Embedding
 
 load_env_vars()
 
@@ -144,6 +147,23 @@ async def delete(
             delete_all=request.delete_all,
         )
         return DeleteResponse(success=success)
+    except Exception as e:
+        logger.error(e)
+        raise HTTPException(status_code=500, detail="Internal Service Error")
+
+
+@app.post(
+    "/embedding",
+    response_model=Embedding,
+)
+async def embedding(
+    request: EmbeddingRequest = Body(...),
+):
+    try:
+        results = get_embeddings(
+            [request.text],
+        )
+        return EmbeddingResponse(embedding=results[0])
     except Exception as e:
         logger.error(e)
         raise HTTPException(status_code=500, detail="Internal Service Error")

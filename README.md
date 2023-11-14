@@ -1,28 +1,43 @@
 # Setup
 ## Python Setup
-Ensure python3.10 is installed
-```
-sudo apt-get install python3.10 python3-pip python3-distutils
-```
-<br />
+- Ensure python3.10 is installed
+    ```
+    sudo apt-get install python3.10 python3-pip python3-distutils
+    ```
 
 ## VSCODE Setup
-- Setup Venv virtual environment
-    1. CTRL + SHIFT + P -> type "Python: Create Environment"
-    2. Choose "Venv"
-    3. Choose "/bin/python3.10"
+- Get source code
+    ```
+    git clone https://github.com/YardiSystems/llm-retrieval-plugin.git
+    cd llm-retrieval-plugin
+    ```
 
-- Activate venv terminal
-    1. CTRL + `
-    2. Type ". .venv/bin/activate"
+- Install Python Poetry
+    ```
+    pip3 install poetry
+    ```
+
+- Setup Python Virtual Environment with poetry
+    ```
+    poetry shell
+    ```
+
+- Launch Visual Studio Code
+    ```
+    code .
+    ```
+
+- Set VSCode Python Interpreter to Venv Python
+    1. Open any python file in the left file window in vscode
+    2. On the bottom right of the vscode window, click the python version and select the one marked ('.venv': Poetry)
+    3. Open a terminal in vscode by pressing CTRL + `
 
 - Install dependencies through poetry
     ```
-    pip3 install poetry
     poetry install
     ```
 
-- Create a .vscode/launch.json for debugging
+- Create a .vscode/launch.json file for debugging
     ```
     {
         "version": "0.2.0",
@@ -83,7 +98,7 @@ sudo apt-get install python3.10 python3-pip python3-distutils
 
 ## Start Milvus
 ```
-docker-compose -f tools/docker-compose-milvus.yml up -d
+docker-compose -f tools/docker-compose-milvus.yml up -d --wait
 ```
 
 
@@ -98,35 +113,40 @@ poetry run start
 ## Add data to Vector DB
 ```
 ### UPSERT TEXT
-python3 tools/database_utils.py upsert <id> <text>
+python3 tools/tools.py upsert
 
 
 ### UPSERT FILE CONTENTS OF DIRECTORY
-python3 tools/database_utils.py upsert_files <directory path>
+python3 tools/tools.py upsert_files
 
 
 ### RUN VOYAGER DB TENANT HISTORY SCRAPER SCRIPT
 # install mssql plugin (only need once)
 poetry install -E mssql
 
-# set voyager db connection info
+# [optional] set voyager db connection details before running to avoid prompting
 export vdb_server=<voyager db server>
 export vdb_database=<voyager db database name>
 export vdb_user=<voyager db login user name>
 export vdb_password=<voyager db login user password>
 
-# run script
-python3 tools/scrape_tenant_history.py
+python3 tools/tools.py scrape_voyager_db
 ```
 
 
-## Search data in Vector DB
+## Get Vector DB results from text
 ```
-python3 tools/database_utils.py query_db [top_k]
+python3 tools/tools.py query_vector_db
 ```
 
 
-## Start the chat tool
+## Get Embedding for text
 ```
-python3 tools/chat.py
+python3 tools/tools.py get_embedding
+```
+
+
+## Ask LLM using Voyager data
+```
+python3 tools/tools.py ask
 ```
