@@ -148,5 +148,5 @@ python3 tools/tools.py get_embedding
 
 ## Ask LLM using Voyager data
 ```
-python3 tools/tools.py ask
+python3 tools/tools.py prompt
 ```

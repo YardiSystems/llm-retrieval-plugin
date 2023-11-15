@@ -55,8 +55,10 @@ class DocumentMetadataFilter(BaseModel):
 
 class Query(BaseModel):
     query: str
+    source_id: str
     filter: Optional[DocumentMetadataFilter] = None
     top_k: Optional[int] = 3
+    embedding_model: Optional[str]
 
 
 class QueryWithEmbedding(Query):
@@ -68,5 +70,11 @@ class QueryResult(BaseModel):
     results: List[DocumentChunkWithScore]
 
 
-class Embedding(BaseModel):
-    embedding: List[float]
+class ConnectionInfo(BaseModel):
+    alias: str
+    host: str
+    port: int
+    user: Optional[str] = None
+    password: Optional[str] = None
+    db_name: Optional[str] = None
+    collection_name: Optional[str] = None

@@ -1,39 +1,29 @@
-import logging
 import requests
-from env_vars import BEARER_TOKEN, OPENAI_API_KEY
+from env_vars import BEARER_TOKEN
 from typing import Any, List, Dict
 
 
-def get_answer(question: str) -> Dict[str, Any]:
+def get_prompt_response(text: str) -> Dict[str, Any]:
     """
-    Handle user's questions.
+    Query plugin with user's prompt
     """
 
-    # Get chunks from database.
-    chunks_response = query_vector_database(question)
-    chunks = []
-    for result in chunks_response["results"]:
-        for inner_result in result["results"]:
-            chunks.append(inner_result["text"])
+    url = "http://0.0.0.0:8000/prompt"
+    headers = {
+        "Content-Type": "application/json",
+        "accept": "application/json",
+        "Authorization": f"Bearer {BEARER_TOKEN}",
+    }
+    data = {"prompt_query": {"query": text}, "source_id": "myvoyagerdbname"}
 
-    logging.info("User's questions: %s", question)
-    logging.info("Retrieved chunks: %s", chunks)
+    response = requests.post(url, json=data, headers=headers)
 
-    response = call_chatgpt_api(question, chunks)
-    logging.info("Response: %s", response)
-
-    return response["choices"][0]["message"]["content"]
-
-
-def apply_prompt_template(question: str) -> str:
-    """
-        A helper function that applies additional template on user's question.
-        Prompt engineering could be done here to improve the result. Here I will just use a minimal example.
-    """
-    prompt = f"""
-        By considering above input from me, answer the question: {question}
-    """
-    return prompt
+    if response.status_code == 200:
+        result = response.json()
+        # process the result
+        return result
+    else:
+        raise ValueError(f"Error: {response.status_code} : {response.content}")
 
 
 def query_vector_database(query_prompt: str, filter: dict = None, top_k: int = 10) -> Dict[str, Any]:
@@ -54,7 +44,7 @@ def query_vector_database(query_prompt: str, filter: dict = None, top_k: int = 1
         }
 
     data = {"queries": [
-        {"query": query_prompt, "top_k": top_k, "filter": filter}]}
+        {"query": query_prompt, "top_k": top_k, "filter": filter, "source_id": "myvoyagerdbname"}]}
 
     response = requests.post(url, json=data, headers=headers)
 
@@ -64,30 +54,6 @@ def query_vector_database(query_prompt: str, filter: dict = None, top_k: int = 1
         return result
     else:
         raise ValueError(f"Error: {response.status_code} : {response.content}")
-
-
-def call_chatgpt_api(user_question: str, chunks: List[str]) -> Dict[str, Any]:
-    """
-    Call chatgpt api with user's question and retrieved chunks.
-    """
-    import openai
-    openai.api_key = OPENAI_API_KEY
-
-    # Send a request to the GPT-3 API
-    messages = list(
-        map(lambda chunk: {
-            "role": "user",
-            "content": chunk
-        }, chunks))
-    question = apply_prompt_template(user_question)
-    messages.append({"role": "user", "content": question})
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=messages,
-        max_tokens=1024,
-        temperature=0.7,  # High temperature leads to a more creative response.
-    )
-    return response
 
 
 def get_embedding(text: str) -> List[float]:
@@ -162,11 +128,11 @@ def scrape_voyager_to_vector_database(vdb_server: str, vdb_database: str, vdb_us
     for i in range(len(all_rows)):
         row = all_rows[i]
         print(f"{len(all_rows)}/{i} - {str(row[0])}")
-        upsert_to_vector_database(str(row[0]), row[1], [
+        upsert_text_to_vector_database(str(row[0]), row[1], [
                                   int(p) for p in str(row[2]).split(',')])
 
 
-def upsert_to_vector_database(id: str, text: str, property_ids: List[int] = None):
+def upsert_text_to_vector_database(id: str, text: str, property_ids: List[int] = None):
     """
     Upload one piece of text to the database.
     """
@@ -190,7 +156,8 @@ def upsert_to_vector_database(id: str, text: str, property_ids: List[int] = None
         "documents": [{
             "id": id,
             "text": text,
-            "metadata": metadata
+            "metadata": metadata,
+            "source_id": "myvoyagerdbname"
         }]
     }
     response = requests.post(url, json=data, headers=headers, timeout=600)
@@ -220,7 +187,8 @@ def upsert_files_to_vector_database(directory: str, property_ids: List[int] = No
             "documents": [{
                 "id": id,
                 "text": text,
-                "metadata": metadata
+                "metadata": metadata,
+                "source_id": "myvoyagerdbname"
             }]
         }
 
@@ -249,7 +217,7 @@ Usage:
   python3 tools/tools.py <option>
 
 Options:
-    ask
+    prompt
     scrape_voyager_db
     get_embedding
     query_vector_db
@@ -265,13 +233,13 @@ if __name__ == "__main__":
     if len(sys.argv) == 1 or not sys.argv[1]:
         print_usage()
 
-    elif sys.argv[1] == "ask":
+    elif sys.argv[1] == "prompt":
         if len(sys.argv) == 3:
-            question = sys.argv[2]
-        else:            
-            question = input("Enter your question: ")
+            text = sys.argv[2]
+        else:
+            text = input("Enter your prompt: ")
 
-        print(get_answer(question=question))
+        print(get_prompt_response(text=text))
 
     elif sys.argv[1] == "query_vector_db":
         query_prompt = input("Enter query prompt: ")
@@ -319,7 +287,7 @@ if __name__ == "__main__":
             text = input("Text: ")
             property_ids = input("Property Ids CSV (default none): ")
         
-        upsert_to_vector_database(
+        upsert_text_to_vector_database(
             id=id, text=text, property_ids=property_ids)
 
     elif sys.argv[1] == "upsert_files":

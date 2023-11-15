@@ -10,6 +10,7 @@ from typing import List, Optional
 
 class UpsertRequest(BaseModel):
     documents: List[Document]
+    source_id: str
 
 
 class UpsertResponse(BaseModel):
@@ -28,6 +29,11 @@ class DeleteRequest(BaseModel):
     ids: Optional[List[str]] = None
     filter: Optional[DocumentMetadataFilter] = None
     delete_all: Optional[bool] = False
+    source_id: str
+
+
+class DeleteResponse(BaseModel):
+    success: bool
 
 
 class EmbeddingRequest(BaseModel):
@@ -38,5 +44,10 @@ class EmbeddingResponse(BaseModel):
     embedding: List[float]
 
 
-class DeleteResponse(BaseModel):
-    success: bool
+class PromptRequest(BaseModel):
+    prompt_query: Query
+    source_id: str
+
+
+class PromptResponse(BaseModel):
+    text: str

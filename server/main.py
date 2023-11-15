@@ -14,14 +14,17 @@ from models.api import (
     UpsertRequest,
     UpsertResponse,
     EmbeddingRequest,
-    EmbeddingResponse
+    EmbeddingResponse,
+    PromptRequest,
+    PromptResponse,
 )
 from datastore.factory import get_datastore
 from services.file import get_document_from_file
 from services.load_env_vars import load as load_env_vars
 from services.embeddings import get_embeddings
+from services.prompt import get_prompt_response
 
-from models.models import DocumentMetadata, Source, Embedding
+from models.models import DocumentMetadata, Source
 
 load_env_vars()
 
@@ -55,6 +58,7 @@ app.mount("/sub", sub_app)
     response_model=UpsertResponse,
 )
 async def upsert_file(
+    source_id: str,
     file: UploadFile = File(...),
     metadata: Optional[str] = Form(None),
 ):
@@ -70,7 +74,7 @@ async def upsert_file(
     document = await get_document_from_file(file, metadata_obj)
 
     try:
-        ids = await datastore.upsert([document])
+        ids = await datastore.upsert([document], source_id)
         return UpsertResponse(ids=ids)
     except Exception as e:
         logger.error(e)
@@ -85,7 +89,7 @@ async def upsert(
     request: UpsertRequest = Body(...),
 ):
     try:
-        ids = await datastore.upsert(request.documents)
+        ids = await datastore.upsert(request.documents, request.source_id)
         return UpsertResponse(ids=ids)
     except Exception as e:
         logger.error(e)
@@ -142,6 +146,7 @@ async def delete(
         )
     try:
         success = await datastore.delete(
+            source_id=request.source_id,
             ids=request.ids,
             filter=request.filter,
             delete_all=request.delete_all,
@@ -154,7 +159,7 @@ async def delete(
 
 @app.post(
     "/embedding",
-    response_model=Embedding,
+    response_model=EmbeddingResponse,
 )
 async def embedding(
     request: EmbeddingRequest = Body(...),
@@ -164,6 +169,32 @@ async def embedding(
             [request.text],
         )
         return EmbeddingResponse(embedding=results[0])
+    except Exception as e:
+        logger.error(e)
+        raise HTTPException(status_code=500, detail="Internal Service Error")
+
+
+@app.post(
+    "/prompt",
+    response_model=PromptResponse,
+)
+async def prompt(
+    request: PromptRequest = Body(...),
+):
+    try:
+        query_results = await datastore.query(
+            [request.prompt_query],
+        )
+        text_chunks = []
+        for query_result in query_results:
+            for document_chunk_with_score in query_result.results:
+                text_chunks.append(document_chunk_with_score.text)
+               
+        prompt_response = await get_prompt_response(
+            request.prompt_query.query,
+            text_chunks
+        )
+        return PromptResponse(text=prompt_response)
     except Exception as e:
         logger.error(e)
         raise HTTPException(status_code=500, detail="Internal Service Error")
